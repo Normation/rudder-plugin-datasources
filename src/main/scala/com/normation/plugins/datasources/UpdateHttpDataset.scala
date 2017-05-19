@@ -125,7 +125,7 @@ class GetDataset(valueCompiler: InterpolatedValueCompiler) {
       httpParams <- expandMap(expand, datasource.params)
       time_0     =  System.currentTimeMillis
       body       <- QueryHttp.QUERY(datasource.httpMethod, url, headers, httpParams, datasource.sslCheck, connectionTimeout, readTimeOut) ?~! s"Error when fetching data from ${url}"
-      _          =  DataSourceTimingLogger.trace(s"[${System.currentTimeMillis - time_0} ms] node '${node.id.value}': GET ${url} // ${path}")
+      _          =  DataSourceTimingLogger.trace(s"[${System.currentTimeMillis - time_0} ms] node '${node.id.value}': GET ${headers.map{case(k,v) => s"$k=$v"}.mkString("[","|","]")} ${url} // ${path}")
       optJson    <- body match {
                       case Some(body) => JsonSelect.fromPath(path, body).map(x => Some(x)) ?~! s"Error when extracting sub-json at path ${path} from ${body}"
                       // this mean we got a 404 => choose behavior based on onMissing value
@@ -308,11 +308,11 @@ object JsonSelect {
       jsonValue <- try {
                      Full(json.read[JSONAware](path))
                    } catch {
-                     case ex: ClassCastException =>
+                     case _: ClassCastException =>
                        try {
                          Full(json.read[Any](path).toString)
                        } catch {
-                         case NonFatal(ex2) => Failure(s"Error when trying to get path '${path.getPath}': ${ex.getMessage}", Full(ex), Empty)
+                         case NonFatal(ex) => Failure(s"Error when trying to get path '${path.getPath}': ${ex.getMessage}", Full(ex), Empty)
                        }
                      case NonFatal(ex) => Failure(s"Error when trying to get path '${path.getPath}': ${ex.getMessage}", Full(ex), Empty)
                    }
